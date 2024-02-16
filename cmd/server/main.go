@@ -1,63 +1,40 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/DaCondor54/roadmapsh-backend/internal/handlers"
+	"github.com/joho/godotenv"
 )
 
 const keyServerAddr = "serverAddr"
 
 func main() {
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Fatalln("Erro Loading .env file")
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.GetRoot)
+	mux.HandleFunc("GET /auth", handlers.Authenticate)
 	mux.HandleFunc("POST /", handlers.PostRoot)
-	ctx, cancelCtx := context.WithCancel(context.Background())
+	mux.HandleFunc("GET /", handlers.GetRoot)
 
 	server1 := &http.Server{
 		Addr:    ":3333",
 		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
-			return ctx
-		},
 	}
 
-	server2 := http.Server{
-		Addr:    ":4444",
-		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
-			return ctx
-		},
+	fmt.Println("Starting Server 1")
+	err = server1.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		fmt.Println("Server 1 Closed")
+	} else if err != nil {
+		fmt.Printf("Server 1 Error %s", err)
+		os.Exit(1)
 	}
-
-	go func() {
-		fmt.Println("Starting Server 1")
-		err := server1.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			fmt.Println("Server 1 Closed")
-		} else if err != nil {
-			fmt.Printf("Server 1 Error %s", err)
-		}
-		cancelCtx()
-	}()
-
-	go func() {
-		fmt.Println("Starting Server 2")
-		err := server2.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			fmt.Println("Server 2 Closed")
-		} else if err != nil {
-			fmt.Printf("Server 2 Error %s", err)
-		}
-		cancelCtx()
-	}()
-
-	<-ctx.Done()
-
 }
