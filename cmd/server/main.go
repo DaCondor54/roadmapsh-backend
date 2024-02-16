@@ -15,6 +15,7 @@ const keyServerAddr = "serverAddr"
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handlers.GetRoot)
+	mux.HandleFunc("POST /", handlers.PostRoot)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 
 	server1 := &http.Server{
